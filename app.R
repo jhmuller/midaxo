@@ -17,9 +17,11 @@ ui <- fluidPage(
                   label = "Number of bins:",
                   min = 1,
                   max = 50,
-                  value = 30)
-      
-    ),
+                  value = 30),
+    selectizeInput("companySelect", "Company", 
+                   choices=c("Apple", "Microsoft", "Google"),
+                   selected = NULL, multiple = FALSE,
+                   options = NULL)), 
     
     # Main panel for displaying outputs ----
     mainPanel(

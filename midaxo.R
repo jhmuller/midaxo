@@ -14,58 +14,92 @@ glimpse(cbase)
 
 
 
-gdf <-rep(0.0, 300*nrow(cbase))
-dim(gdf) <- c(300, nrow(cbase))
-colnames(gdf) <- cbase$Company
+desc_df <-rep(0.0, 300*nrow(cbase))
+dim(desc_df) <- c(300, nrow(cbase))
+colnames(desc_df) <- cbase$Company
+
+cat_df <-rep(0.0, 300*nrow(cbase))
+dim(cat_df) <- c(300, nrow(cbase))
+colnames(cat_df) <- cbase$Company
+
 for (i in 1:nrow(cbase)){
   #i <- 1
   company <- cbase$Company[i]  
   print(paste(i,company))
-  vec <- rep(0L, 300)
+
+  vec <- rep(0, 300)
   dim(vec) <- c(300,1)
-  k <- 0.0
-  for (j in seq(1:length(cbase$DWords[i][[1]]))) {
-   # j <- 2
-    word <- cbase$DWords[i][[1]][j]
-    #print (word)
+  sumwts <- 0.0
+  for (j in seq(1:length(cbase$Dwords[i][[1]]))) {
+    word <- cbase$Dwords[i][[1]][j]
     if (word %in% colnames(gmod)){
       thisword <- word
-      thisvec <- gmod[,word]
+      thiswt = cbase$Dword_wts[i][[1]][j]
+      sumwts <- sumwts + thiswt
+      thisvec <- gmod[,word] * thiswt
       dim(thisvec) <- c(300,1)
-      #print(paste(k, word))
       vec <- vec + thisvec
-      k <- k + 1
     }
-    #print(vec)
   }
-  vec <- vec / k
-  gdf[,i] <- vec   
+  desc_vec <- vec / sumwts
+  desc_df[,i] <- desc_vec  
+  
+  vec <- rep(0, 300)
+  dim(vec) <- c(300,1)  
+  sumwts = 0
+  for (j in seq(1:length(cbase$Catwords[i][[1]]))) {
+    word <- cbase$Catwords[i][[1]][j]
+    if (word %in% colnames(gmod)){
+      thisword <- word
+      sumwts <- sumwts + 1
+      thisvec <- gmod[,word] * thiswt
+      dim(thisvec) <- c(300,1)
+      vec <- vec + thisvec
+    }
+  }  
+  cat_vec <- vec / sumwts  
+  cat_df[,i] <- cat_vec  
 }
 
+
+vdf <- cat_df*.01 + desc_df*.99
+
 rm(list=c("msg"))
-msg <- ""
-for (i in 5:6){#:nrow(cbase)){
+msg1 <- ""
+for (i in 2:2){#:nrow(cbase)){
   #i <- 1
-  cmsg <- paste("\n")
-  cmsg <- paste(cmsg, "#",  i, "Company: ", cbase$Company[i], "\n")
-  cmsg <- paste(cmsg, "Descr: ",cbase$Desc2[i], "\n")
-  
-  x <- find_sim_wvs(this_wv=gdf[,i], all_wvs=gdf, top_n_res=5)
+  msg1 <- paste("\n")
+  msg1 <- paste(msg1, "#",  i, "Company: ", cbase$Company[i], "\n")
+  msg1 <- paste(msg1, "Dwords: ",cbase$Dwords[i], "\n")
+  msg1 <- paste(msg1, "Dword_wts: ",cbase$Dword_wts[i], "\n")  
+  msg1 <- paste(msg1, "Catwords: ",cbase$Catwords[i], "\n")  
+  x <- find_sim_wvs(this_wv=vdf[,i], all_wvs=vdf, top_n_res=5)
   
   if (length(x) == 0 || is.na(x)){
     print(paste("ERROR!"))
     next
   }
-  for (j in 2:4){
-    cmsg <- paste(cmsg, "match #", j-1 )
+  msg2 <- " "
+  for (j in 2:6){
+    msg2 <- paste(msg2, "\nmatch #\n", j-1 )
     other <- names(x)[j]    
-    cmsg <- paste(cmsg, "Company: ", other, "Score= ", x[j], "\n")
-    cmsg <- paste(cmsg, "\tClosestDescr: ",cbase$Desc2[cbase$Company == other], "\n")
+    msg2 <- paste(msg2, "Company: ", other, "Score= ", x[j], "\n")
+    msg2 <- paste(msg2, "\tClosestDwords: ",cbase$Dwords[cbase$Company == other], "\n")
+    msg2 <- paste(msg2, "\tClosestDwords: ",cbase$Dword_wts[cbase$Company == other], "\n")
+    msg2 <- paste(msg2, "Catwords: ",cbase$Catwords[cbase$Company == other], "\n")     
   }
-    print(i)
-  msg <- paste(msg, cmsg)
+  print(i)
+  msg <- paste(msg1, msg2)
+  cat(msg)
 }
 
+library(MASS)
+odir <- "data_derived"
+dir.create(odir, showWarnings = TRUE)
+write.matrix(cat_df, "data_derived/catmat.csv", sep="|")
+write.matrix(desc_df, "data_derived/descmat.csv", sep="|")
+
+typeof(cat_df)
 cat(msg)
 write(msg, 'crunchbase_matches.txt')
 

@@ -55,6 +55,23 @@ drop_first <- function(x){
   return (res)
 }
 
+drop_empty <- function(x){
+  if (length(x) > 0){
+    temp <- unlist(x)
+    n_elems <- 0
+    for (i in seq(1, length(x))){
+      if (nchar(x[[i]]) > 0){
+        n_elems <- n_elems + 1        
+        temp[n_elems] <- x[[i]]
+      }
+    }
+    res <- list(temp[1:n_elems])
+  } else {
+    res <- list()
+  }
+  return (res)
+}
+
 #' @title Process descriptions, i.e. prepare for vectorizing.
 #'
 #' @name process_descriptions
@@ -75,7 +92,7 @@ process_descriptions <- function(df){
   df$Company = sapply(df$Company, str_remove_all, regex_special) 
   df$company_lower <-  sapply(df$Company, str_to_lower)
   df$Desc_mod <- sapply(df$Description, str_to_lower) 
-  df$Desc_mod <- sapply(df$Desc_mod, iconv, "UTF-8", "ASCII")
+  df$Desc_mod <- sapply(df$Desc_mod, iconv, "latin1", "ASCII", sub=' ')
   df$Desc_mod <- sapply(df$Desc_mod, str_remove_all, "\\.|,")   
   
   stop_words_regex <- paste0(" ", paste0(stop_words, collapse=" | "), " ")
@@ -83,7 +100,10 @@ process_descriptions <- function(df){
 
   df$Dwords <- strsplit(x=df$Desc_mod, split=' ')
   df$Dwords <- sapply(df$Dwords, drop_first )
-  df <- select(df, Company, company_lower,  Dwords, Desc_mod,  Description, everything())
+  df$Dwords <- sapply(df$Dwords, drop_empty )
+  df$Categories_lower <- sapply(df$Categories, str_to_lower)
+  df$Catwords <- strsplit(x=df$Categories_lower, split=' ')  
+  #df <- select(df, Company, company_lower,  Dwords, Desc_mod,  Description, everything())
   return (df)
 }
 
@@ -109,11 +129,14 @@ for (i in seq(1, nrow(df))){
     dwordsdf[dword, "cnt"] <- dwordsdf[dword, "cnt"] + 1
   }
 }
-df$Dword_wts = 0
+
+df$Dword_wts = rep(0, nrow(df))
 for (i in seq(1, nrow(df))){
-  dwords <- unique(df$Dwords[i][[1]])
-  word_wts = 1.0/dwordsdf[df$Dwords[1][[1]],] 
-  word_wts =  word_wts/sum(word_wts)
+  print (i)
+  dwords <- df$Dwords[i][[1]]
+  word_wts = 1.0/dwordsdf[df$Dwords[i][[1]],] 
+  word_wts =  round(word_wts/sum(word_wts), 3)
+  print(word_wts)
   df$Dword_wts[i] = list(word_wts)
 }
 
