@@ -22,7 +22,7 @@ cnames <- colnames(tempdf)
 shinyUI(fluidPage(
   
   # Application title
-  titlePanel("Impact of trades in Japan"),
+  titlePanel("similar Companies"),
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
